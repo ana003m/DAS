@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dynamic Stock Selector</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f5f5f5;
+    }
+
+    .navbar {
+      background-color: #0066cc;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 20px;
+      position: fixed;
+      top: 0;
+      width: 100%;
+      z-index: 1000;
+    }
+
+    .navbar .title {
+      color: white;
+      font-size: 1.5rem;
+      font-weight: bold;
+    }
+
+    .navbar a {
+      color: white;
+      text-align: center;
+      padding: 14px 20px;
+      text-decoration: none;
+      font-size: 1rem;
+    }
+
+    .navbar a:hover {
+      background-color: #ddd;
+      color: black;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      max-width: 1200px;
+      margin: 50px auto;
+      padding: 20px;
+      background-color: #fff;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      border-radius: 10px;
+      margin-top: 80px;
+    }
+
+    .text h1 {
+      font-size: 3rem;
+      font-weight: bold;
+      color: #1e3c72;
+    }
+
+    .stock-selector {
+      margin-top: 20px;
+      margin-left: 0;
+    }
+
+    .stock-selector label,
+    .stock-selector select {
+      display: block;
+      margin-bottom: 10px;
+    }
+
+    .stock-selector select {
+      width: 200px;
+      height: 50px;
+      font-size: 1.2rem;
+      padding: 5px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+
+    .prediction-result {
+      margin-top: 20px;
+    }
+
+    .links{
+      margin-right: 100px;
+    }
+
+    .title{
+      margin-left: 67px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="navbar">
+  <div class="title">Stock Predictor</div>
+  <div class="links">
+    <a href="index.html">HOME</a>
+    <a href="tech_analysis.html">TECHNICAL ANALYSIS</a>
+    <a href="fundamental-analysis.html">FUNDAMENTAL ANALYSIS</a>
+    <a href="lstm-predict.html">LSTM PREDICT</a>
+  </div>
+</div>
+
+<div class="container">
+  <h1 style="color: #1e3c72; font-size: 48px">Fundamental Analysis</h1>
+  <div class="stock-selector">
+    <label for="stockDropdown">Select a stock:</label>
+    <select id="stockDropdown" onchange="predictStockTrend()">
+      <option value="">Select a stock</option>
+    </select>
+  </div>
+  <div class="prediction-result">
+    <p id="predictionResult"></p>
+  </div>
+</div>
+
+<script>
+  let stockData = [];
+
+  async function loadStockData() {
+    try {
+      const response = await fetch('stock.json');
+      stockData = await response.json();
+
+      populateStockDropdown(stockData);
+      console.log("Stock data loaded:", stockData);
+    } catch (error) {
+      console.error("Error loading stock data:", error);
+    }
+  }
+
+  function populateStockDropdown(data) {
+    const stockDropdown = document.getElementById('stockDropdown');
+    const uniqueSellers = [...new Set(data.map(item => item.seller))];
+
+    uniqueSellers.forEach(seller => {
+      const option = document.createElement('option');
+      option.value = seller;
+      option.textContent = seller;
+      stockDropdown.appendChild(option);
+    });
+  }
+
+  async function predictStockTrend() {
+    const stockName = document.getElementById('stockDropdown').value;
+    if (!stockName) {
+      document.getElementById('predictionResult').innerText = '';
+      return;
+    }
+
+    const filteredData = stockData
+      .filter(item => item.seller === stockName)
+      .map(item => ({
+        date: new Date(item.date.split('.').reverse().join('-')),
+        price: parseFloat(item.last_transaction.replace(',', '.').replace(' ден.', ''))
+      }))
+      .sort((a, b) => a.date - b.date);
+
+    if (filteredData.length < 2) {
+      document.getElementById('predictionResult').innerText = "Not enough data for prediction.";
+      return;
+    }
+
+    const lastPrice = filteredData[filteredData.length - 1].price;
+    const previousPrice = filteredData[filteredData.length - 2].price;
+
+    const trend = lastPrice > previousPrice ? 'Up' : 'Down';
+    document.getElementById('predictionResult').innerText =
+      `Prediction for ${stockName}: ${trend} (Last price: ${lastPrice}, Previous price: ${previousPrice})`;
+  }
+
+  loadStockData();
+</script>
+</body>
+</html>
