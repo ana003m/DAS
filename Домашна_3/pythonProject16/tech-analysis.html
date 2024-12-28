@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Technical Analysis - Stock Predictor</title>
+    <style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: #f5f5f5;
+    }
+
+    .navbar {
+        background-color: #0066cc;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 20px;
+        position: fixed;
+        top: 0;
+        width: 100%;
+        z-index: 1000;
+    }
+
+    .navbar .title {
+        color: white;
+        font-size: 1.5rem;
+        font-weight: bold;
+    }
+
+    .navbar a {
+        color: white;
+        text-align: center;
+        padding: 14px 20px;
+        text-decoration: none;
+        font-size: 1rem;
+    }
+
+    .navbar a:hover {
+        background-color: #ddd;
+        color: black;
+    }
+
+    h1 {
+        margin-top: 50px; /* Adjusted for navbar */
+        margin-left: 150px;
+    }
+
+    #stockDropdown, #timeDropdown, h2 {
+        margin-left: 150px;
+    }
+
+    #indicators {
+        margin-left: 150px;
+        width: 40%;
+    }
+
+    /* Updated styles for graph */
+    #graphContainer {
+        position: fixed;
+        top: 150px;  /* Adjusted to appear below the navbar */
+        right: 30px; /* Positioned to the right side */
+        width: 600px;  /* Set a fixed width */
+        height: 500px; /* Set a fixed height */
+        z-index: 999;
+    }
+
+    #myChart {
+        width: 100%;
+        height: 100%;
+    }
+</style>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<div class="navbar">
+    <div class="title">Stock Predictor</div>
+    <div>
+        <a href="tech-analysis.html">HOME</a>
+        <a href="tech-analysis.html">TECHNICAL ANALYSIS</a>
+        <a href="fundamental-analysis.html">FUNDAMENTAL ANALYSIS</a>
+        <a href="lstm-predict.html">LSTM PREDICT</a>
+    </div>
+</div>
+
+<h1>Select a Seller</h1>
+<select id="stockDropdown" onchange="onSellerChange()">
+    <option value="">Select Seller</option>
+</select>
+
+<h1>Select Time Period</h1>
+<select id="timeDropdown" onchange="onTimeChange()">
+    <option value="">Select Time Period</option>
+    <option value="1">1 Day</option>
+    <option value="7">1 Week</option>
+    <option value="30">1 Month</option>
+</select>
+
+<h2>Indicators</h2>
+<div id="indicators">
+    <p><strong>RSI:</strong> <span id="RSI"></span></p>
+    <p><strong>Momentum:</strong> <span id="Momentum"></span></p>
+    <p><strong>Williams:</strong> <span id="Williams"></span></p>
+    <p><strong>Stochastic:</strong> <span id="Stochastic"></span></p>
+    <p><strong>Ultimate:</strong> <span id="Ultimate"></span></p>
+    <p><strong>SMA:</strong> <span id="SMA"></span></p>
+    <p><strong>EMA:</strong> <span id="EMA"></span></p>
+    <p><strong>WMA:</strong> <span id="WMA"></span></p>
+    <p><strong>HMA:</strong> <span id="HMA"></span></p>
+    <p><strong>TMA:</strong> <span id="TMA"></span></p>
+    <p><strong>Recommendation:</strong> <span id="buySellHold"></span></p>
+</div>
+
+<div id="graphContainer">
+    <canvas id="myChart" width="400" height="400"></canvas>
+</div>
+
+<script>
+    let stockData = [];
+
+    async function loadStockData() {
+        try {
+            const response = await fetch('stock.json');
+            if (response.ok) {
+                stockData = await response.json();
+                populateStockDropdown(stockData);
+            } else {
+                console.error("Failed to load stock data");
+            }
+        } catch (error) {
+            console.error("Error loading stock data:", error);
+        }
+    }
+
+    function populateStockDropdown(data) {
+        const stockDropdown = document.getElementById('stockDropdown');
+        const uniqueSellers = [...new Set(data.map(item => item.seller))];
+        uniqueSellers.forEach(seller => {
+            const option = document.createElement('option');
+            option.value = seller;
+            option.textContent = seller;
+            stockDropdown.appendChild(option);
+        });
+    }
+
+    async function onSellerChange() {
+        const selectedSeller = document.getElementById('stockDropdown').value;
+        const selectedTime = parseInt(document.getElementById('timeDropdown').value, 10);
+
+        if (!selectedSeller || !selectedTime) return;
+
+        const sellerData = stockData.filter(item => item.seller === selectedSeller);
+        const prices = sellerData.map(item => parseFloat(item.last_transaction.replace(' ден.', '').replace(',', '.')));
+
+        try {
+            const response = await fetch('http://127.0.0.1:5000/api/calculate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prices, period: selectedTime })
+            });
+
+            const data = await response.json();
+            if (data.error) {
+                console.error(data.error);
+                return;
+            }
+            document.getElementById('RSI').textContent = data.RSI;
+            document.getElementById('Momentum').textContent = data.Momentum;
+            document.getElementById('Williams').textContent = data.Williams;
+            document.getElementById('Stochastic').textContent = data.Stochastic;
+            document.getElementById('Ultimate').textContent = data.Ultimate;
+            document.getElementById('SMA').textContent = data.SMA;
+            document.getElementById('EMA').textContent = data.EMA;
+            document.getElementById('WMA').textContent = data.WMA;
+            document.getElementById('HMA').textContent = data.HMA;
+            document.getElementById('TMA').textContent = data.TMA;
+            document.getElementById('buySellHold').textContent = data.Recommendation;
+
+            renderChart(prices);
+        } catch (error) {
+            console.error("Error calculating indicators:", error);
+        }
+    }
+
+    let myChartInstance = null;
+
+    function renderChart(prices) {
+        const ctx = document.getElementById('myChart').getContext('2d');
+
+        if (myChartInstance) {
+            myChartInstance.destroy();
+        }
+
+        myChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: prices.map((_, index) => tech_analysis + 1),
+                datasets: [{
+                    label: 'Stock Prices',
+                    data: prices,
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1,
+                    fill: false
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    }
+
+    window.onload = loadStockData;
+</script>
+</body>
+</html>
