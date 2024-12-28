@@ -119,7 +119,6 @@ def calculate_indicators():
             return "Sell"
         return "Hold"
 
-    # Calculate indicators
     indicators = {
         "RSI": calculate_rsi(prices),
         "Momentum": calculate_momentum(prices),
