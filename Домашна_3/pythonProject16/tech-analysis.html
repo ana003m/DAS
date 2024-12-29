@@ -188,34 +188,34 @@
     let myChartInstance = null;
 
     function renderChart(prices) {
-        const ctx = document.getElementById('myChart').getContext('2d');
+    const ctx = document.getElementById('myChart').getContext('2d');
 
-        if (myChartInstance) {
-            myChartInstance.destroy();
-        }
+    if (myChartInstance) {
+        myChartInstance.destroy();
+    }
 
-        myChartInstance = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: prices.map((_, index) => tech_analysis + 1),
-                datasets: [{
-                    label: 'Stock Prices',
-                    data: prices,
-                    borderColor: 'rgba(75, 192, 192, 1)',
-                    borderWidth: 1,
-                    fill: false
-                }]
-            },
-            options: {
-                responsive: true,
-                scales: {
-                    y: {
-                        beginAtZero: true
-                    }
+    myChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: prices.map((_, index) => index + 1), // Исправен проблем со labels
+            datasets: [{
+                label: 'Stock Prices',
+                data: prices,
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 1,
+                fill: false
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true
                 }
             }
-        });
-    }
+        }
+    });
+}
 
     window.onload = loadStockData;
 </script>
